@@ -298,6 +298,14 @@ spec:
           - STEPS
           - STAGES
           - PARAMETERS
+      - name: disableHTTP2
+        type: bool
+        description:
+          "Disable HTTP2"
+        scope:
+          - STEPS
+          - PARAMETERS
+        default: false
   outputs:
     resources:
       - name: influx

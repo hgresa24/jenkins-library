@@ -48,6 +48,7 @@ type protecodeExecuteScanOptions struct {
 	VersioningModel             string `json:"versioningModel,omitempty" validate:"possible-values=major major-minor semantic full"`
 	PullRequestName             string `json:"pullRequestName,omitempty"`
 	CustomDataJSONMap           string `json:"customDataJSONMap,omitempty"`
+	DisableHTTP2                bool   `json:"disableHTTP2,omitempty"`
 }
 
 type protecodeExecuteScanInflux struct {
@@ -324,6 +325,7 @@ func addProtecodeExecuteScanFlags(cmd *cobra.Command, stepConfig *protecodeExecu
 	cmd.Flags().StringVar(&stepConfig.VersioningModel, "versioningModel", `major`, "The versioning model used for result reporting (based on the artifact version). Example 1.2.3 using `major` will result in version 1")
 	cmd.Flags().StringVar(&stepConfig.PullRequestName, "pullRequestName", os.Getenv("PIPER_pullRequestName"), "The name of the pull request")
 	cmd.Flags().StringVar(&stepConfig.CustomDataJSONMap, "customDataJSONMap", os.Getenv("PIPER_customDataJSONMap"), "The JSON map of key-value pairs to be included in this scan's Custom Data (See protecode API).")
+	cmd.Flags().BoolVar(&stepConfig.DisableHTTP2, "disableHTTP2", false, "Disable HTTP2")
 
 	cmd.MarkFlagRequired("serverUrl")
 	cmd.MarkFlagRequired("group")
@@ -649,6 +651,15 @@ func protecodeExecuteScanMetadata() config.StepData {
 						Mandatory:   false,
 						Aliases:     []config.Alias{},
 						Default:     os.Getenv("PIPER_customDataJSONMap"),
+					},
+					{
+						Name:        "disableHTTP2",
+						ResourceRef: []config.ResourceReference{},
+						Scope:       []string{"STEPS", "PARAMETERS"},
+						Type:        "bool",
+						Mandatory:   false,
+						Aliases:     []config.Alias{},
+						Default:     false,
 					},
 				},
 			},

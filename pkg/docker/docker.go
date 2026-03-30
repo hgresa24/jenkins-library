@@ -2,9 +2,11 @@ package docker
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"os"
 	"path"
 	"path/filepath"
@@ -159,14 +161,16 @@ type Client struct {
 	localPath     string
 	includeLayers bool
 	imageFormat   string
+	disableHTTP2  bool
 }
 
 // ClientOptions defines the options to be set on the client
 type ClientOptions struct {
-	ImageName   string
-	RegistryURL string
-	LocalPath   string
-	ImageFormat string
+	ImageName    string
+	RegistryURL  string
+	LocalPath    string
+	ImageFormat  string
+	DisableHTTP2 bool
 }
 
 // Download interface for download an image to a local path
@@ -182,6 +186,7 @@ func (c *Client) SetOptions(options ClientOptions) {
 	c.registryURL = options.RegistryURL
 	c.localPath = options.LocalPath
 	c.imageFormat = options.ImageFormat
+	c.disableHTTP2 = options.DisableHTTP2
 }
 
 // DownloadImageContent downloads the image content into the given targetDir. Returns with an error if the targetDir doesnt exist
@@ -222,9 +227,29 @@ func (c *Client) DownloadImageContent(imageSource, targetDir string) (v1.Image, 
 	return img, piperutils.Untar(tmpFile.Name(), targetDir, 0)
 }
 
+// newHTTPTransport returns an *http.Transport with HTTP/2 optionally disabled.
+// Disabling HTTP/2 works around proxy infrastructure that enforces stream
+// duration limits, causing "stream error: NO_ERROR" on large downloads.
+func newHTTPTransport(disableHTTP2 bool) *http.Transport {
+	t := remote.DefaultTransport.(*http.Transport).Clone()
+	if disableHTTP2 {
+		t.ForceAttemptHTTP2 = false
+		// Advertise only HTTP/1.1 via ALPN. Avoid the TLSNextProto empty-map
+		// trick because it strips all ALPN protocols, which causes EOF from
+		// servers/proxies that require ALPN negotiation.
+		if t.TLSClientConfig == nil {
+			t.TLSClientConfig = &tls.Config{}
+		}
+		t.TLSClientConfig.NextProtos = []string{"http/1.1"}
+	}
+	return t
+}
+
 // DownloadImage downloads the image and saves it as tar at the given path
 func (c *Client) DownloadImage(imageSource, targetFile string) (v1.Image, error) {
-	noOpts := []crane.Option{}
+	noOpts := []crane.Option{
+		crane.WithTransport(newHTTPTransport(c.disableHTTP2)),
+	}
 
 	imageRef, err := c.getImageRef(imageSource)
 	if err != nil {

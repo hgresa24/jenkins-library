@@ -50,7 +50,7 @@ func protecodeExecuteScan(config protecodeExecuteScanOptions, telemetryData *tel
 	log.Entry().Debug("Create protecode client")
 	client := createProtecodeClient(&config)
 
-	dClientOptions := piperDocker.ClientOptions{ImageName: config.ScanImage, RegistryURL: config.DockerRegistryURL, LocalPath: config.FilePath, ImageFormat: "legacy"}
+	dClientOptions := piperDocker.ClientOptions{ImageName: config.ScanImage, RegistryURL: config.DockerRegistryURL, LocalPath: config.FilePath, ImageFormat: "legacy", DisableHTTP2: config.DisableHTTP2}
 	dClient := &piperDocker.Client{}
 	dClient.SetOptions(dClientOptions)
 
